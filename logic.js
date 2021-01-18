@@ -2,10 +2,8 @@
 onYearChange = function() {
     var selection = d3.select("#yearSelection").node();
     var currentYear = selection.options[selection.selectedIndex].value;
-    updateChart(currentYear)
+    updateChart(currentYear);
 }
-
-
 
 var svg = d3.select("svg");
 
@@ -61,7 +59,6 @@ d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
     //global variables
     data = dataset;
 
-
     //xScale
     xScale = d3.scaleBand()
         .domain(d3.range(filtered.length))
@@ -102,10 +99,6 @@ var updateChart = function(year) {
     yAxisG.transition()
         .duration(500)
         .call(yAxis);
-
-    chartG.append("g")
-        .call(yAxis)
-        //.attr("transform", "translate(0, " + (padding.t) + ")");
 
     var bars = d3.select(".chartG").selectAll("rect")
         .data(filtered)
