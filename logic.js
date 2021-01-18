@@ -101,8 +101,11 @@ var updateChart = function(year) {
         .call(yAxis);
 
     var bars = d3.select(".chartG").selectAll("rect")
-        .data(filtered)
-        .enter()
+        .data(filtered, function(d) {
+            return d.cause;
+        });
+
+    var barsEnter = bars.enter()
         .append("rect")
         .attr("x", (d, i) => {
             return xScale(i);
@@ -114,11 +117,24 @@ var updateChart = function(year) {
             return chartHeight - yScale(d.deaths);
         })
         .attr("width", xScale.bandwidth())
-        .attr("fill", "blue");
+        .attr("fill", "blue")
+        
+    barsEnter.merge(bars)
+        .transition()
+        .duration(500)
+        .attr("y", d => {
+            return yScale(d.deaths);
+        })
+        .attr("height", d => {
+            return chartHeight - yScale(d.deaths);
+        });
 
     var labels = d3.select(".chartG").selectAll(".labels")
-        .data(filtered)
-        .enter()
+        .data(filtered, function(d) {
+            return d.cause;
+        })
+    
+    var labelsEnter = labels.enter()
         .append("text")
         .text(d => {
             return d.cause;
@@ -132,10 +148,32 @@ var updateChart = function(year) {
             //return "rotate(90, 100, 100)";
             return "rotate(30," + (xScale(i) + 2) + "," + (chartHeight) + ")";
         });
+
+    labelsEnter.merge(labels)
+        .transition()
+        .duration(500)
+        .attr("x", (d, i) => {
+            return xScale(i) + 5;
+        })
+        .attr("y", chartHeight + 10)
+        .attr("transform", (d, i) => {
+            //return "rotate(90, 100, 100)";
+            return "rotate(30," + (xScale(i) + 2) + "," + (chartHeight) + ")";
+        });
+    
+    labels.exit()
+        .transition()
+        .duration(100)
+        .remove();
+
         
-        var counts = d3.select(".chartG").selectAll(".counts")
-        .data(filtered)
-        .enter()
+    var counts = d3.select(".chartG").selectAll(".counts")
+        .data(filtered, function(d) {
+            return d.cause;
+        })
+
+
+    var countsEnter = counts.enter()
         .append("text")
         .text(d => {
             return formatDeaths(d.deaths);
@@ -151,5 +189,22 @@ var updateChart = function(year) {
             //return "rotate(90, 100, 100)";
             return "rotate(-45," + (xScale(i) + 8) + "," + (yScale(d.deaths) - 10) + ")";
         });
+
+    countsEnter.merge(counts)
+        .transition()
+        .duration(500)
+        .attr("x", (d, i) => {
+            return xScale(i) + 8;
+        })
+        .attr("y", d => {
+            return yScale(d.deaths) - 10;
+        })
+        .attr("transform", (d, i) => {
+            //return "rotate(90, 100, 100)";
+            return "rotate(-45," + (xScale(i) + 8) + "," + (yScale(d.deaths) - 10) + ")";
+        });
+
+    counts.exit()
+        .remove();
     
 }
