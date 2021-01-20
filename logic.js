@@ -39,6 +39,59 @@ var chartG = svg.append("g")
 var yAxisG = chartG.append("g")
     .attr("class", "y axis")
 
+var sortDeaths = function() {
+    chartG.selectAll("rect")
+        .sort(function(a, b) {
+            return a.deaths - b.deaths;
+        })
+        .transition()
+        .duration(500)
+        .delay((d, i) => {
+            return i* 50;
+        })
+        .attr("x", (d, i) => {
+            return xScale(i);
+        })
+    
+    chartG.selectAll(".labels")
+        .sort(function(a, b) {
+            return a.deaths - b.deaths;
+        })
+        .transition()
+        .duration(500)
+        .delay((d, i) => {
+            return i* 50;
+        })
+        .attr("x", (d, i) => {
+            return xScale(i) + 2;
+        })
+        .attr("y", chartHeight + 10)
+        .attr("transform", (d, i) => {
+            //return "rotate(90, 100, 100)";
+            return "rotate(30," + (xScale(i) + 2) + "," + (chartHeight + 10) + ")";
+        });
+
+    chartG.selectAll(".counts")
+        .sort(function(a, b) {
+            return a.deaths - b.deaths;
+        })
+        .transition()
+        .duration(500)
+        .delay((d, i) => {
+            return i* 50;
+        })
+        .attr("x", (d, i) => {
+            return xScale(i) + 10;
+        })
+        .attr("y", d => {
+            return yScale(d.deaths) - 5;
+        })
+        .attr("transform", (d, i) => {
+            //return "rotate(90, 100, 100)";
+            return "rotate(-90," + (xScale(i) + 10) + "," + (yScale(d.deaths) - 5) + ")";
+        });
+}
+
 d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
     //current selection for year is 2019
     currentYear = "2019"
@@ -74,18 +127,27 @@ d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
 
 //updates chart based on the year clicked
 var updateChart = function(year) {
+    //set that year's array of death objects to filtered
     nested.forEach(d => {
         if (d.key == year) {
             filtered = d.values;
         }
     })
 
+    //get rid of non-injury 
+    //this can probably be prettier, maybe use a regex formatter instead of change the object value for cause
     filtered.forEach(d => {
         if (d.cause.includes("Non-Injury:")) {
             var indexOfColon = d.cause.indexOf(":") + 2;
             d.cause = d.cause.substr(indexOfColon)
         }
     })
+
+    // var sorted = filtered.sort((a, b) => {
+    //     return a.deaths - b.deaths;
+    // })
+
+    console.log("filtered: " + filtered.length);
 
     //update yScale domain
     yScale.domain([0, d3.max(filtered, d => {
@@ -101,8 +163,11 @@ var updateChart = function(year) {
         .call(yAxis);
 
     var bars = d3.select(".chartG").selectAll("rect")
-        .data(filtered)
-        .enter()
+        .data(filtered, function(d) {
+            return d.cause;
+        });
+
+    var barsEnter = bars.enter()
         .append("rect")
         .attr("x", (d, i) => {
             return xScale(i);
@@ -114,42 +179,105 @@ var updateChart = function(year) {
             return chartHeight - yScale(d.deaths);
         })
         .attr("width", xScale.bandwidth())
-        .attr("fill", "blue");
+        .attr("fill", "red")
+        
+    barsEnter.merge(bars)
+        .transition()
+        .duration(500)
+        .attr("y", d => {
+            return yScale(d.deaths);
+        })
+        .attr("x", (d, i) => {
+            return xScale(i);
+        })
+        .attr("height", d => {
+            return chartHeight - yScale(d.deaths);
+        });
+
+    bars.exit()
+        .remove();
 
     var labels = d3.select(".chartG").selectAll(".labels")
-        .data(filtered)
-        .enter()
+        .data(filtered, function(d) {
+            return d.cause;
+        })
+    
+    var labelsEnter = labels.enter()
         .append("text")
         .text(d => {
             return d.cause;
         })
         .attr("class", "labels")
         .attr("x", (d, i) => {
-            return xScale(i) + 5;
+            return xScale(i) + 6.5;
         })
         .attr("y", chartHeight + 10)
         .attr("transform", (d, i) => {
             //return "rotate(90, 100, 100)";
-            return "rotate(30," + (xScale(i) + 2) + "," + (chartHeight) + ")";
+            return "rotate(30," + (xScale(i) + 6.5) + "," + (chartHeight + 10) + ")";
         });
+
+    labelsEnter.merge(labels)
+        .transition()
+        .duration(500)
+        .text(d => {
+            return d.cause;
+        })
+        .attr("x", (d, i) => {
+            return xScale(i) + 6.5;
+        })
+        .attr("y", chartHeight + 10)
+        .attr("transform", (d, i) => {
+            //return "rotate(90, 100, 100)";
+            return "rotate(30," + (xScale(i) + 6.5) + "," + (chartHeight) + ")";
+        });
+    
+    labels.exit()
+        .transition()
+        .duration(100)
+        .remove();
+
         
-        var counts = d3.select(".chartG").selectAll(".counts")
-        .data(filtered)
-        .enter()
+    var counts = d3.select(".chartG").selectAll(".counts")
+        .data(filtered, function(d) {
+            return d.cause;
+        })
+
+
+    var countsEnter = counts.enter()
         .append("text")
         .text(d => {
             return formatDeaths(d.deaths);
         })
         .attr("class", "counts")
         .attr("x", (d, i) => {
-            return xScale(i) + 8;
+            return xScale(i) + 6;
         })
         .attr("y", d => {
-            return yScale(d.deaths) - 10;
+            return yScale(d.deaths) - 5;
         })
         .attr("transform", (d, i) => {
             //return "rotate(90, 100, 100)";
-            return "rotate(-45," + (xScale(i) + 8) + "," + (yScale(d.deaths) - 10) + ")";
+            return "rotate(-90," + (xScale(i) + 6) + "," + (yScale(d.deaths)- 5) + ")";
         });
-    
+
+    countsEnter.merge(counts)
+        .transition()
+        .duration(500)
+        .text(d => {
+            return formatDeaths(d.deaths)
+        })
+        .attr("x", (d, i) => {
+            return xScale(i) + 6;
+        })
+        .attr("y", d => {
+            return yScale(d.deaths - 5);
+        })
+        .attr("transform", (d, i) => {
+            //return "rotate(90, 100, 100)";
+            return "rotate(-90," + (xScale(i) + 6) + "," + (yScale(d.deaths) - 5) + ")";
+        });
+
+    counts.exit()
+        .remove();
 }

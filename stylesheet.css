@@ -3,7 +3,12 @@
 }
 
 .counts {
-    font-size: 8px;
-    text-anchor: middle;
+    font-size: 16px;
+}
+
+.selectors {
+    position: absolute;
+    top: 10px;
+    left: 10px;
 }
 
