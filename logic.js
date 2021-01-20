@@ -39,6 +39,7 @@ var chartG = svg.append("g")
 var yAxisG = chartG.append("g")
     .attr("class", "y axis")
 
+    //sorts deaths in ascending order
 var sortDeaths = function() {
     chartG.selectAll("rect")
         .sort(function(a, b) {
@@ -102,6 +103,7 @@ d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
         return d.year;
     })
     .entries(dataset);
+
     //isolate deaths from current year
     nested.forEach(d => {
         if (d.key == currentYear) {
@@ -121,6 +123,9 @@ d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
     //instantiate yScale and set range
     yScale = d3.scaleLinear()
         .range([chartHeight, 0]);
+
+    colorScale = d3.scaleLinear()
+        .range(["green", "orange", "red"]);
 
     updateChart("2019");
 })
@@ -154,6 +159,12 @@ var updateChart = function(year) {
             return d.deaths;
         })]);
 
+    var maxDeaths = d3.max(filtered, d => {
+        return d.deaths;
+    })
+
+    colorScale.domain([0, maxDeaths / 2, maxDeaths])
+
     var yAxis = d3.axisLeft()
         .scale(yScale)
         .tickFormat(formatDeaths);
@@ -179,7 +190,9 @@ var updateChart = function(year) {
             return chartHeight - yScale(d.deaths);
         })
         .attr("width", xScale.bandwidth())
-        .attr("fill", "red")
+        .attr("fill", d => {
+            return colorScale(d.deaths);
+        })
         
     barsEnter.merge(bars)
         .transition()
