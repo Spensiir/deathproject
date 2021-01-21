@@ -39,6 +39,7 @@ var chartG = svg.append("g")
 var yAxisG = chartG.append("g")
     .attr("class", "y axis")
 
+    //sorts deaths in ascending order
 var sortDeaths = function() {
     chartG.selectAll("rect")
         .sort(function(a, b) {
@@ -46,9 +47,6 @@ var sortDeaths = function() {
         })
         .transition()
         .duration(500)
-        .delay((d, i) => {
-            return i* 50;
-        })
         .attr("x", (d, i) => {
             return xScale(i);
         })
@@ -59,9 +57,6 @@ var sortDeaths = function() {
         })
         .transition()
         .duration(500)
-        .delay((d, i) => {
-            return i* 50;
-        })
         .attr("x", (d, i) => {
             return xScale(i) + 2;
         })
@@ -77,9 +72,6 @@ var sortDeaths = function() {
         })
         .transition()
         .duration(500)
-        .delay((d, i) => {
-            return i* 50;
-        })
         .attr("x", (d, i) => {
             return xScale(i) + 10;
         })
@@ -102,6 +94,7 @@ d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
         return d.year;
     })
     .entries(dataset);
+
     //isolate deaths from current year
     nested.forEach(d => {
         if (d.key == currentYear) {
@@ -121,6 +114,9 @@ d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
     //instantiate yScale and set range
     yScale = d3.scaleLinear()
         .range([chartHeight, 0]);
+
+    colorScale = d3.scaleLinear()
+        .range(["green", "orange", "red"]);
 
     updateChart("2019");
 })
@@ -143,16 +139,16 @@ var updateChart = function(year) {
         }
     })
 
-    // var sorted = filtered.sort((a, b) => {
-    //     return a.deaths - b.deaths;
-    // })
-
-    console.log("filtered: " + filtered.length);
-
     //update yScale domain
     yScale.domain([0, d3.max(filtered, d => {
             return d.deaths;
         })]);
+
+    var maxDeaths = d3.max(filtered, d => {
+        return d.deaths;
+    })
+
+    colorScale.domain([0, maxDeaths / 2, maxDeaths])
 
     var yAxis = d3.axisLeft()
         .scale(yScale)
@@ -169,6 +165,18 @@ var updateChart = function(year) {
 
     var barsEnter = bars.enter()
         .append("rect")
+        .on("mouseover", function(d) {
+            console.log(d);
+            d3.select("#tooltip")
+                .classed("hidden", false)
+                .select("#value")
+                    .text(d.cause + " killed " + d.deaths + " people in " + year);
+
+        })
+            .on("mouseout", function() {
+                d3.select("#tooltip")
+                    .classed("hidden", true)
+            })
         .attr("x", (d, i) => {
             return xScale(i);
         })
@@ -179,7 +187,9 @@ var updateChart = function(year) {
             return chartHeight - yScale(d.deaths);
         })
         .attr("width", xScale.bandwidth())
-        .attr("fill", "red")
+        .attr("fill", d => {
+            return colorScale(d.deaths);
+        })
         
     barsEnter.merge(bars)
         .transition()
@@ -204,6 +214,18 @@ var updateChart = function(year) {
     
     var labelsEnter = labels.enter()
         .append("text")
+        .on("mouseover", function(d) {
+            console.log(d);
+            d3.select("#tooltip")
+                .classed("hidden", false)
+                .select("#value")
+                    .text(d.cause + " killed  " + d.deaths + " people in " + year);
+
+        })
+            .on("mouseout", function() {
+                d3.select("#tooltip")
+                    .classed("hidden", true)
+            })
         .text(d => {
             return d.cause;
         })
@@ -246,6 +268,18 @@ var updateChart = function(year) {
 
     var countsEnter = counts.enter()
         .append("text")
+        .on("mouseover", function(d) {
+            console.log(d);
+            d3.select("#tooltip")
+                .classed("hidden", false)
+                .select("#value")
+                    .text(d.cause + " killed  " + d.deaths + " people in " + year);
+
+        })
+            .on("mouseout", function() {
+                d3.select("#tooltip")
+                    .classed("hidden", true)
+            })
         .text(d => {
             return formatDeaths(d.deaths);
         })

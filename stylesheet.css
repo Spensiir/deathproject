@@ -12,3 +12,18 @@
     left: 10px;
 }
 
+#tooltip {
+    position: absolute;
+    max-width: 150px;
+    top: 100px;
+    left: 100px;
+    border: 1px solid black;
+}
+
+#tooltip.hidden {
+    display: none;
+}
+
+#tooltip p {
+    margin: 2px 2px;
+}
