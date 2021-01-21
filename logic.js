@@ -47,9 +47,6 @@ var sortDeaths = function() {
         })
         .transition()
         .duration(500)
-        .delay((d, i) => {
-            return i* 50;
-        })
         .attr("x", (d, i) => {
             return xScale(i);
         })
@@ -60,9 +57,6 @@ var sortDeaths = function() {
         })
         .transition()
         .duration(500)
-        .delay((d, i) => {
-            return i* 50;
-        })
         .attr("x", (d, i) => {
             return xScale(i) + 2;
         })
@@ -78,9 +72,6 @@ var sortDeaths = function() {
         })
         .transition()
         .duration(500)
-        .delay((d, i) => {
-            return i* 50;
-        })
         .attr("x", (d, i) => {
             return xScale(i) + 10;
         })
@@ -148,12 +139,6 @@ var updateChart = function(year) {
         }
     })
 
-    // var sorted = filtered.sort((a, b) => {
-    //     return a.deaths - b.deaths;
-    // })
-
-    console.log("filtered: " + filtered.length);
-
     //update yScale domain
     yScale.domain([0, d3.max(filtered, d => {
             return d.deaths;
@@ -180,6 +165,18 @@ var updateChart = function(year) {
 
     var barsEnter = bars.enter()
         .append("rect")
+        .on("mouseover", function(d) {
+            console.log(d);
+            d3.select("#tooltip")
+                .classed("hidden", false)
+                .select("#value")
+                    .text(d.cause + " killed " + d.deaths + " people in " + year);
+
+        })
+            .on("mouseout", function() {
+                d3.select("#tooltip")
+                    .classed("hidden", true)
+            })
         .attr("x", (d, i) => {
             return xScale(i);
         })
@@ -217,6 +214,18 @@ var updateChart = function(year) {
     
     var labelsEnter = labels.enter()
         .append("text")
+        .on("mouseover", function(d) {
+            console.log(d);
+            d3.select("#tooltip")
+                .classed("hidden", false)
+                .select("#value")
+                    .text(d.cause + " killed  " + d.deaths + " people in " + year);
+
+        })
+            .on("mouseout", function() {
+                d3.select("#tooltip")
+                    .classed("hidden", true)
+            })
         .text(d => {
             return d.cause;
         })
@@ -259,6 +268,18 @@ var updateChart = function(year) {
 
     var countsEnter = counts.enter()
         .append("text")
+        .on("mouseover", function(d) {
+            console.log(d);
+            d3.select("#tooltip")
+                .classed("hidden", false)
+                .select("#value")
+                    .text(d.cause + " killed  " + d.deaths + " people in " + year);
+
+        })
+            .on("mouseout", function() {
+                d3.select("#tooltip")
+                    .classed("hidden", true)
+            })
         .text(d => {
             return formatDeaths(d.deaths);
         })
