@@ -2,10 +2,11 @@
 onYearChange = function() {
     var selection = d3.select("#yearSelection").node();
     var currentYear = selection.options[selection.selectedIndex].value;
-    updateChart(currentYear);
+    d3.select(".selected").classed("selected", false)
+    updateChart("year", currentYear);
 }
 
-var svg = d3.select("svg");
+var svg = d3.select(".real");
 
 var svgWidth = +svg.attr("width");
 
@@ -20,7 +21,7 @@ var chartHeight = svgHeight - padding.t - padding.b;
 var formatDeaths = d3.format(".2s");
 
 //parse values from dataset
-var rowConverter = d => {
+var rowConverter = d => {   
     return {
         cause: d.cause,
         code: d.code,
@@ -37,7 +38,7 @@ var chartG = svg.append("g")
     .attr("class", "chartG");
 
 var yAxisG = chartG.append("g")
-    .attr("class", "y axis")
+    .attr("class", "y axis");
 
     //sorts deaths in ascending order
 var sortDeaths = function() {
@@ -107,10 +108,9 @@ d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
 
     //xScale
     xScale = d3.scaleBand()
-        .domain(d3.range(filtered.length))
         .rangeRound([0, chartWidth])
         .paddingInner(.1);
-    
+
     //instantiate yScale and set range
     yScale = d3.scaleLinear()
         .range([chartHeight, 0]);
@@ -118,82 +118,116 @@ d3.csv("causeofdeath.csv", rowConverter).then(function(dataset) {
     colorScale = d3.scaleLinear()
         .range(["green", "orange", "red"]);
 
-    updateChart("2019");
+    updateChart("year", "2019");
 })
 
+d3.selectAll(".filter")
+    .on("click", function() {
+        var selected = d3.select(this);
+
+        d3.select(".filter.selected").classed("selected", false)
+
+        selected.classed("selected", true)
+
+        updateChart("type", selected.attr("value"))
+    })
+
 //updates chart based on the year clicked
-var updateChart = function(year) {
+var updateChart = function(filterKey, filterValue) {
+
+    var realDataset;
     //set that year's array of death objects to filtered
-    nested.forEach(d => {
-        if (d.key == year) {
-            filtered = d.values;
+    if (filterKey == "year") {
+        nested.forEach(d => {
+            if (d.key == filterValue) {
+                filtered = d.values;
+            }
+        })
+        realDataset = filtered;
+    }
+
+    if (filterKey == "type") {
+        console.log(filtered);
+        var deathsByType;
+        if (filterValue == "illness") {
+            deathsByType = filtered.filter(d => {
+                return d.cause.includes("Non-Injury:")
+            })
+        } else if (filterValue == "injury") {
+            deathsByType = filtered.filter(d => {
+                return !d.cause.includes("Non-Injury:")
+            })
         }
-    })
-
-    //get rid of non-injury 
-    //this can probably be prettier, maybe use a regex formatter instead of change the object value for cause
-    filtered.forEach(d => {
-        if (d.cause.includes("Non-Injury:")) {
-            var indexOfColon = d.cause.indexOf(":") + 2;
-            d.cause = d.cause.substr(indexOfColon)
-        }
-    })
-
-    //update yScale domain
-    yScale.domain([0, d3.max(filtered, d => {
-            return d.deaths;
-        })]);
-
-    var maxDeaths = d3.max(filtered, d => {
+        realDataset = deathsByType;
+    }
+    //calculate cause with most deaths to find upper limit of domain
+    var maxDeaths = d3.max(realDataset, d => {
         return d.deaths;
     })
 
+    //update yScale domain
+    yScale.domain([0, maxDeaths]);
+
     colorScale.domain([0, maxDeaths / 2, maxDeaths])
+
+    //xScale
+    xScale.domain(d3.range(realDataset.length))
 
     var yAxis = d3.axisLeft()
         .scale(yScale)
         .tickFormat(formatDeaths);
 
     yAxisG.transition()
-        .duration(500)
+        .duration(1000)
         .call(yAxis);
 
     var bars = d3.select(".chartG").selectAll("rect")
-        .data(filtered, function(d) {
+        .data(realDataset, function(d) {
             return d.cause;
         });
 
+    bars.exit()
+    .transition()
+    .duration(500)
+    .attr("y", chartHeight)
+    .attr("height", 0)
+    .remove();
+
     var barsEnter = bars.enter()
         .append("rect")
-        .on("mouseover", function(d) {
-            console.log(d);
-            d3.select("#tooltip")
-                .classed("hidden", false)
-                .select("#value")
-                    .text(d.cause + " killed " + d.deaths + " people in " + year);
-
-        })
-            .on("mouseout", function() {
-                d3.select("#tooltip")
-                    .classed("hidden", true)
-            })
         .attr("x", (d, i) => {
             return xScale(i);
         })
-        .attr("y", d => {
-            return yScale(d.deaths);
-        })
-        .attr("height", d => {
-            return chartHeight - yScale(d.deaths);
-        })
+        .attr("y", chartHeight)
+        .attr("height",  0)
         .attr("width", xScale.bandwidth())
         .attr("fill", d => {
             return colorScale(d.deaths);
         })
+        .on("mouseover", function(d) {
+            d3.select("#tooltip")
+                .classed("hidden", false)
+                .select("#value")
+                    .text(d.cause + " killed " + d.deaths + " people in " + d.year);
+
+            })
+            .on("mouseout", function() {
+                d3.select("#tooltip")
+                    .classed("hidden", true)
+            });
         
-    barsEnter.merge(bars)
+    barsEnter.transition()
+        .duration(1000)
+        .attr("y", d => {
+            return yScale(d.deaths)
+        })
+        .attr("height", d => {
+            return chartHeight - yScale(d.deaths)
+        });
+    
+        barsEnter.merge(bars)
         .transition()
-        .duration(500)
+        .duration(1000)
         .attr("y", d => {
             return yScale(d.deaths);
         })
@@ -202,32 +236,42 @@ var updateChart = function(year) {
         })
         .attr("height", d => {
             return chartHeight - yScale(d.deaths);
-        });
+        })
+        .attr("width", xScale.bandwidth());
 
-    bars.exit()
-        .remove();
+
 
     var labels = d3.select(".chartG").selectAll(".labels")
-        .data(filtered, function(d) {
+        .data(realDataset, function(d) {
             return d.cause;
         })
+
+    labels.exit()
+        .transition()
+        .duration(500)
+        .style("opacity", 0)
+        .remove();
     
     var labelsEnter = labels.enter()
         .append("text")
         .on("mouseover", function(d) {
-            console.log(d);
             d3.select("#tooltip")
                 .classed("hidden", false)
                 .select("#value")
-                    .text(d.cause + " killed  " + d.deaths + " people in " + year);
+                    .text(d.cause + " killed  " + d.deaths + " people in " + d.year);
 
-        })
-            .on("mouseout", function() {
+            })
+        .on("mouseout", function() {
                 d3.select("#tooltip")
                     .classed("hidden", true)
             })
         .text(d => {
-            return d.cause;
+            if (d.cause.includes("Non-Injury:")) {
+                var indexOfColon = d.cause.indexOf(":") + 2;
+                return d.cause.substr(indexOfColon)
+            } else {
+                return d.cause;
+            }
         })
         .attr("class", "labels")
         .attr("x", (d, i) => {
@@ -235,45 +279,47 @@ var updateChart = function(year) {
         })
         .attr("y", chartHeight + 10)
         .attr("transform", (d, i) => {
-            //return "rotate(90, 100, 100)";
             return "rotate(30," + (xScale(i) + 6.5) + "," + (chartHeight + 10) + ")";
-        });
+        })
+        // .style("opacity", 0);
+
+    labelsEnter.transition()
+        .duration(500)
+        // .style("opacity", 100);
 
     labelsEnter.merge(labels)
         .transition()
-        .duration(500)
+        .duration(1000)
         .text(d => {
-            return d.cause;
+            if (d.cause.includes("Non-Injury:")) {
+                var indexOfColon = d.cause.indexOf(":") + 2;
+                return d.cause.substr(indexOfColon)
+            } else {
+                return d.cause;
+            }
         })
+        .attr("class", "labels")
         .attr("x", (d, i) => {
             return xScale(i) + 6.5;
         })
         .attr("y", chartHeight + 10)
         .attr("transform", (d, i) => {
-            //return "rotate(90, 100, 100)";
-            return "rotate(30," + (xScale(i) + 6.5) + "," + (chartHeight) + ")";
-        });
+            return "rotate(30," + (xScale(i) + 6.5) + "," + (chartHeight + 10) + ")";
+        })
+        //.style("opacity", 100);
     
-    labels.exit()
-        .transition()
-        .duration(100)
-        .remove();
-
-        
     var counts = d3.select(".chartG").selectAll(".counts")
-        .data(filtered, function(d) {
+        .data(realDataset, function(d) {
             return d.cause;
         })
-
 
     var countsEnter = counts.enter()
         .append("text")
         .on("mouseover", function(d) {
-            console.log(d);
             d3.select("#tooltip")
                 .classed("hidden", false)
                 .select("#value")
-                    .text(d.cause + " killed  " + d.deaths + " people in " + year);
+                    .text(d.cause + " killed  " + d.deaths + " people in " + d.year);
 
         })
             .on("mouseout", function() {
@@ -297,7 +343,7 @@ var updateChart = function(year) {
 
     countsEnter.merge(counts)
         .transition()
-        .duration(500)
+        .duration(1000)
         .text(d => {
             return formatDeaths(d.deaths)
         })
@@ -314,4 +360,53 @@ var updateChart = function(year) {
 
     counts.exit()
         .remove();
+}
+
+var sortByDeathType = function(filterKey) {
+    var deathsByType;
+    if (filterKey == "illness") {
+        deathsByType = filtered.filter(d => {
+            return d.cause.includes("Non-Injury:")
+        })
+    } else if (filterKey == "injury") {
+        deathsByType = filtered.filter(d => {
+            return !d.cause.includes("Non-Injury:")
+        })
+    }
+
+    //adjust xScale
+    xScale.domain(d3.range(deathsByType.length))
+
+    var bars = chartG.selectAll("rect")
+        .data(deathsByType, function(d) {
+            return d.cause;
+        })
+
+    bars.enter()
+        .append("rect")
+        .attr("x", (d, i) => {
+            return xScale(i);
+        })
+        .attr("width", xScale.bandwidth)
+        .merge(bars)
+        .transition()
+        .duration(1000)
+        .attr("x", (d, i) => {
+            return xScale(i);
+        })
+        .attr("width", xScale.bandwidth)
+
+    bars.exit()
+    .transition()
+    .duration(500)
+    .remove();
+
+        
+    // var barsEnter = bars.enter()
+    //     .attr("x", (d, i) => {
+    //         return xScale(i);
+    //     })
+    //     .attr("width", xScale.bandwidth)
+    //     .merge()
+    
 }
